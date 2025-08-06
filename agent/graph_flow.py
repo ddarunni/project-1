@@ -1,6 +1,6 @@
 import os
 import operator
-from typing import TypedDict, Annotated, List
+from typing import TypedDict, Annotated, List, Any
 
 from dotenv import load_dotenv
 from langchain_core.messages import AnyMessage, HumanMessage
@@ -12,8 +12,14 @@ from langgraph.graph import StateGraph, END
 # --- 1. 설정 (Configuration) ---
 # 스크립트의 주요 설정을 상단에 상수로 정의하여 관리합니다.
 MODEL_NAME = "gpt-4o"
-SYSTEM_PROMPT = "너는 철강 데이터 분석 전문가야. 사용자 질문에 맞는 도구를 선택해서 정확한 수치를 포함한 한국어 답변을 해줘."
 ROUTING_KEYWORDS = ["사업실", "그룹", "판매량", "매출액", "영업이익", "공급사", "고객사", "국가"]
+
+# 프롬프트 로더 import
+try:
+    from agent.prompt_loader import get_combined_prompt
+    SYSTEM_PROMPT = get_combined_prompt()
+except ImportError:
+    SYSTEM_PROMPT = "너는 철강 데이터 분석 전문가야. 사용자 질문에 맞는 도구를 선택해서 정확한 수치를 포함한 한국어 답변을 해줘."
 
 # --- 2. 상태 정의 (State Definition) ---
 # 그래프 전체에서 사용될 상태 객체의 구조를 정의합니다.
@@ -21,6 +27,7 @@ class AgentState(TypedDict):
     input: str
     output: str
     chat_history: Annotated[List[AnyMessage], operator.add]
+    df: Any
 
 # --- 3. 에이전트 및 그래프 구성 요소 (Agent & Graph Components) ---
 
@@ -64,6 +71,12 @@ def route_logic(state: AgentState) -> str:
 def agent_node(state: AgentState, agent_executor: AgentExecutor) -> dict:
     """데이터 분석을 수행하는 에이전트 노드입니다."""
     print("--- 에이전트 노드 실행 ---")
+    
+    # df를 전역 변수로 설정하여 tools에서 접근 가능하도록 함
+    import agent.tools as tools_module
+    if hasattr(tools_module, 'set_dataframe'):
+        tools_module.set_dataframe(state["df"])
+    
     result = agent_executor.invoke({
         "input": state["input"],
         "chat_history": state["chat_history"]
@@ -116,18 +129,20 @@ def main():
     # 2. 그래프 워크플로우 생성
     app = create_graph_workflow(agent_executor)
 
-    # 3. 테스트 실행
-    print("\n--- [Test Case 1: 에이전트 경로] ---")
-    inputs_agent = {"input": "2023년 사업부별 매출 알려줘", "chat_history": []}
-    result_agent = app.invoke(inputs_agent)
-    print("\n[최종 결과]")
-    print(result_agent['output'])
+# The code snippet you provided is a part of the main execution function in a Python script. Here's
+# what it does:
+    # # 3. 테스트 실행
+    # print("\n--- [Test Case 1: 에이전트 경로] ---")
+    # inputs_agent = {"input": "2023년 사업부별 매출 알려줘", "chat_history": []}
+    # result_agent = app.invoke(inputs_agent)
+    # print("\n[최종 결과]")
+    # print(result_agent['output'])
 
-    print("\n\n--- [Test Case 2: 폴백 경로] ---")
-    inputs_fallback = {"input": "오늘 날씨 어때?", "chat_history": []}
-    result_fallback = app.invoke(inputs_fallback)
-    print("\n[최종 결과]")
-    print(result_fallback['output'])
+    # print("\n\n--- [Test Case 2: 폴백 경로] ---")
+    # inputs_fallback = {"input": "오늘 날씨 어때?", "chat_history": []}
+    # result_fallback = app.invoke(inputs_fallback)
+    # print("\n[최종 결과]")
+    # print(result_fallback['output'])
 
 # Create the graph executor for LangGraph Studio
 load_dotenv()
