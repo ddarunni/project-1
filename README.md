@@ -1,6 +1,6 @@
 # 📊 Steel Sales Analysis Agent
 
-**찼강 전문 데이터 분석 Agent**는 LangGraph + LangChain + Streamlit 기반으로 구축된 자연어 기반 분석 시스템입니다.
+**철강 전문 데이터 분석 Agent**는 LangGraph + LangChain + Streamlit 기반으로 구축된 자연어 기반 분석 시스템입니다.
 사용자가 질문을 자연어로 입력하면, 내부 Pandas 기반 Excel 데이터를 자동으로 분석하여 정량적 통계와 요약 정보를 제공합니다.
 
 ---
