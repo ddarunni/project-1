@@ -12,6 +12,10 @@ from agent.tools import (
     get_sales_volume_by_supplier,
     get_sales_volume_by_country,
     get_overall_summary,
+    # Phase 1: Advanced Multi-Column Tools
+    advanced_multi_column_query,
+    comparative_analysis_tool,
+    detect_relevant_columns,
 )
 
 # ✅ LangGraph Studio, LangChain Agent, Streamlit 공통 등록용
@@ -84,5 +88,21 @@ registered_tools = [
         func=get_overall_summary,
         name="get_overall_summary",
         description="전체 매출수량, 매출액, 영업이익을 요약합니다."
+    ),
+    # === Phase 1: Advanced Multi-Column Tools ===
+    Tool.from_function(
+        func=advanced_multi_column_query,
+        name="advanced_multi_column_query",
+        description="복합 조건(사업부+국가+연도 등)으로 데이터를 필터링하고 지정된 지표를 계산합니다. 여러 조건이 조합된 복잡한 질문에 사용하세요."
+    ),
+    Tool.from_function(
+        func=comparative_analysis_tool,
+        name="comparative_analysis_tool", 
+        description="두 조건을 비교 분석합니다. '한국 vs 중국', '스테인리스 vs 전기강판' 등의 비교 질문에 사용하세요."
+    ),
+    Tool.from_function(
+        func=detect_relevant_columns,
+        name="detect_relevant_columns",
+        description="질문에서 관련 컬럼들을 자동 감지하고 추천합니다. 복잡한 질문 분석 시 먼저 사용하세요."
     ),
 ]

@@ -1,0 +1,112 @@
+PHASE 1 INTEGRATION GUIDE
+==========================
+
+🎯 PROMPT SYSTEM ARCHITECTURE
+
+Current System Flow:
+Router → Context Aware → Intent Classification → Query Planning → Agent
+
+Each node needs specific prompt guidance:
+
+📋 **Context Aware Node Prompts**
+```
+CONTEXT RESOLUTION PATTERNS:
+- "그것" + [entity from last response] → Resolved reference
+- "이전" + [context] → Previous result reference  
+- "더" + [scope] → Expanded analysis scope
+- "또한" + [addition] → Additional dimension
+
+ENTITY EXTRACTION PRIORITY:
+1. Division names (스테인리스, 전기강판, etc.)
+2. Countries (한국, 중국, 일본)
+3. Time periods (2023년, 상반기)
+4. Metrics (매출, 이익)
+```
+
+🎯 **Intent Classification Prompts**
+```
+INTENT MAPPING:
+- aggregation: [합계, 총, 전체] → Single metric calculation
+- comparison: [비교, vs, 대비] → Two-condition analysis
+- ranking: [상위, 하위, 가장] → Ordered results
+- filtering: [조건, ~인, ~만] → Subset analysis
+- multi-column: [2+ conditions] → Complex query
+
+COMPLEXITY SCORING:
+- Simple: 1 condition (Division only)
+- Medium: 2 conditions (Division + Country)
+- High: 3+ conditions (Division + Country + Year + Supplier)
+```
+
+🗂️ **Query Planning Prompts**
+```
+STRATEGY SELECTION:
+- multi_column_query: When 2+ filters detected
+- comparative_analysis: When comparison intent + 2 entities
+- single_column_query: When 1 filter only
+- general_analysis: When no specific filters
+
+TOOL RECOMMENDATION LOGIC:
+IF (conditions >= 2) → advanced_multi_column_query
+ELIF (comparison_detected) → comparative_analysis_tool  
+ELIF (complex_question) → detect_relevant_columns
+ELSE → existing_single_tools
+```
+
+🤖 **Agent Node Enhanced Prompts**
+```
+TOOL USAGE DECISION TREE:
+
+1. MULTI-COLUMN CONDITIONS DETECTED?
+   YES → Use advanced_multi_column_query with all parameters
+   
+2. COMPARISON REQUEST DETECTED?
+   YES → Use comparative_analysis_tool with condition pairs
+   
+3. UNCERTAIN ABOUT COLUMNS?
+   YES → Use detect_relevant_columns first, then appropriate tool
+   
+4. SIMPLE SINGLE CONDITION?
+   YES → Use existing specialized tools
+
+RESPONSE FORMATTING:
+- Always include data source info
+- Show filtering statistics (X out of Y records)
+- Use business-friendly language
+- Provide actionable conclusions
+```
+
+🔄 **Integration with Existing Prompts**
+
+RECOMMENDED MIGRATION PATH:
+
+1. **Phase 1A**: Add enhanced examples to existing fewshot
+2. **Phase 1B**: Integrate new tool guidance to instructions  
+3. **Phase 1C**: Full replacement with enhanced prompts
+
+BACKWARD COMPATIBILITY:
+- Keep existing examples as baseline
+- Add Phase 1 examples as advanced cases
+- Maintain Korean language consistency
+- Preserve business domain expertise
+
+📊 **Performance Monitoring Prompts**
+
+QUALITY CHECKPOINTS:
+```
+After each response, evaluate:
+1. Was the most appropriate tool selected? 
+2. Was context properly utilized?
+3. Is the numerical result accurate?
+4. Does the response format meet standards?
+5. Would a business user understand this?
+```
+
+SUCCESS METRICS TO TRACK:
+- Multi-column query success rate
+- Context resolution accuracy  
+- Comparison analysis completeness
+- User satisfaction with responses
+- Reduction in follow-up clarification questions
+
+This integration guide ensures seamless evolution from basic Q&A to intelligent conversational analysis.

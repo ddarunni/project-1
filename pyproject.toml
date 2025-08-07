@@ -1,17 +1,258 @@
 [project]
-name = "langgraph-agent"
-version = "0.1.0"
-description = "Add your description here"
+name = "steel-analysis-agent"
+version = "1.0.0"
+description = "🚀 Steel Sales Analysis Agent - Phase 1: 철강 전문 지능형 대화 분석 시스템"
 readme = "README.md"
 requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [
+    {name = "Steel Analysis Team"},
+]
+keywords = [
+    "steel-industry", 
+    "data-analysis", 
+    "langgraph", 
+    "langchain", 
+    "streamlit",
+    "conversational-ai",
+    "multi-column-analysis",
+    "context-aware",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+# Phase 1 Production Dependencies
 dependencies = [
-    "dotenv>=0.9.9",
+    # Core LangChain & LangGraph Stack
     "langchain>=0.3.27",
     "langchain-openai>=0.3.28",
+    "langchain-anthropic>=0.2.0",  # Phase 1: Anthropic support
+    "langgraph>=0.6.3",
     "langgraph-cli[inmem]>=0.3.6",
-    "langgraph[cli]>=0.6.3",
+    
+    # Data Analysis & Processing
     "pandas>=2.3.1",
-    "python-dotenv>=1.1.1",
+    "numpy>=1.24.0",
+    "openpyxl>=3.1.0",  # Excel file support
+    
+    # UI & Web Framework
     "streamlit>=1.47.1",
-    "typing-extensions",
+    
+    # Environment & Configuration
+    "python-dotenv>=1.1.1",
+    
+    # Type Support
+    "typing-extensions>=4.8.0",
+    
+    # Phase 1 Enhanced Features
+    "pydantic>=2.0.0",  # Data validation
+    "regex>=2023.0.0",  # Advanced regex for context parsing
+]
+
+# Development Dependencies
+[project.optional-dependencies]
+dev = [
+    # Code Quality
+    "ruff>=0.1.0",
+    "mypy>=1.7.0",
+    "pre-commit>=3.5.0",
+    
+    # Testing
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+    
+    # Documentation
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.4.0",
+    
+    # Development Tools
+    "jupyter>=1.0.0",
+    "ipykernel>=6.26.0",
+]
+
+test = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.4.0",
+]
+
+# Phase 1 Entry Points
+[project.scripts]
+steel-analysis = "main:main"
+steel-streamlit = "app:main"
+
+# URLs
+[project.urls]
+Homepage = "https://github.com/yourusername/langgraph_agent"
+Documentation = "https://github.com/yourusername/langgraph_agent#readme"
+Repository = "https://github.com/yourusername/langgraph_agent"
+Issues = "https://github.com/yourusername/langgraph_agent/issues"
+Changelog = "https://github.com/yourusername/langgraph_agent/releases"
+
+# Build System
+[build-system]
+requires = ["hatchling>=1.18.0"]
+build-backend = "hatchling.build"
+
+# Package Discovery
+[tool.hatch.build.targets.wheel]
+packages = ["agent"]
+
+# Phase 1 Tool Configuration
+
+# Ruff Configuration (Code Quality)
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings  
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "TCH", # flake8-type-checking
+]
+ignore = [
+    "E501",  # line too long (handled by formatter)
+    "B008",  # do not perform function calls in argument defaults
+    "C901",  # too complex
+]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["F401"]  # imported but unused
+"**/tests/**/*.py" = ["S101"]  # assert used
+
+[tool.ruff.isort]
+known-first-party = ["agent"]
+
+# MyPy Configuration (Type Checking)
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "streamlit.*",
+    "langgraph.*",
+    "langchain.*",
+    "pandas.*",
+]
+ignore_missing_imports = true
+
+# Pytest Configuration
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = [
+    "--strict-markers",
+    "--strict-config", 
+    "--cov=agent",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-report=xml",
+]
+testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+# Coverage Configuration
+[tool.coverage.run]
+source = ["agent"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/venv/*",
+    "*/.venv/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+# Phase 1 Environment Variables
+[tool.hatch.envs.default]
+dependencies = [
+    "coverage[toml]>=6.5",
+    "pytest",
+]
+
+[tool.hatch.envs.default.scripts]
+test = "pytest {args:tests}"
+test-cov = "coverage run -m pytest {args:tests}"
+cov-report = [
+    "- coverage combine",
+    "coverage report",
+]
+cov = [
+    "test-cov", 
+    "cov-report",
+]
+
+# Development Environment
+[tool.hatch.envs.dev]
+dependencies = [
+    "jupyter",
+    "ipython",
+    "ruff",
+    "mypy",
+    "pre-commit",
+]
+
+[tool.hatch.envs.dev.scripts]
+format = [
+    "ruff format {args:.}",
+    "ruff --fix {args:.}",
+]
+lint = [
+    "ruff {args:.}",
+    "mypy {args:agent}",
+]
+check = [
+    "format",
+    "lint",
+    "test",
 ]
