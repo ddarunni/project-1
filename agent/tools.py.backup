@@ -806,8 +806,7 @@ def test_period_recognition(sample_limit: int = 10) -> str:
         result += "\n"
     
     return result
-import pandas as pd
-from langchain_core.tools import tool
+# Multi-Dataset Comparison Tools
 
 # 전역 변수로 여러 데이터셋 관리
 _global_datasets = {}
@@ -830,20 +829,29 @@ def compare_datasets_summary() -> str:
     if len(datasets) < 2:
         return "❌ 비교하려면 최소 2개의 데이터셋이 필요합니다."
     
-    result = "📊 데이터셋 기본 정보 비교:\n\n"
+    result = "📊 데이터셋 기본 정보 비교:
+
+"
     
     for name, df in datasets.items():
-        result += f"🗂️ **{name}**\n"
-        result += f"  • 행 수: {len(df):,}개\n"
-        result += f"  • 열 수: {len(df.columns)}개\n"
-        result += f"  • 메모리: {df.memory_usage(deep=True).sum() / 1024 / 1024:.1f}MB\n"
-        result += f"  • 결측값: {df.isnull().sum().sum():,}개\n"
+        result += f"🗂️ **{name}**
+"
+        result += f"  • 행 수: {len(df):,}개
+"
+        result += f"  • 열 수: {len(df.columns)}개
+"
+        result += f"  • 메모리: {df.memory_usage(deep=True).sum() / 1024 / 1024:.1f}MB
+"
+        result += f"  • 결측값: {df.isnull().sum().sum():,}개
+"
         
         # 주요 수치형 컬럼 요약
         numeric_cols = df.select_dtypes(include=['number']).columns
         if len(numeric_cols) > 0:
-            result += f"  • 수치형 컬럼: {len(numeric_cols)}개\n"
-        result += "\n"
+            result += f"  • 수치형 컬럼: {len(numeric_cols)}개
+"
+        result += "
+"
     
     return result
 
@@ -855,7 +863,9 @@ def compare_datasets_metrics(metric: str = "매출수량(M/T)") -> str:
     if len(datasets) < 2:
         return "❌ 비교하려면 최소 2개의 데이터셋이 필요합니다."
     
-    result = f"📈 {metric} 비교 분석:\n\n"
+    result = f"📈 {metric} 비교 분석:
+
+"
     metric_results = {}
     
     for name, df in datasets.items():
@@ -878,145 +888,39 @@ def compare_datasets_metrics(metric: str = "매출수량(M/T)") -> str:
             else:
                 unit = ""
             
-            result += f"🗂️ **{name}**\n"
-            result += f"  • 총합: {total:,.0f}{unit}\n"
-            result += f"  • 평균: {mean:,.0f}{unit}\n"
-            result += f"  • 레코드 수: {count:,}개\n\n"
+            result += f"🗂️ **{name}**
+"
+            result += f"  • 총합: {total:,.0f}{unit}
+"
+            result += f"  • 평균: {mean:,.0f}{unit}
+"
+            result += f"  • 레코드 수: {count:,}개
+
+"
         else:
-            result += f"🗂️ **{name}**: ❌ '{metric}' 컬럼 없음\n\n"
+            result += f"🗂️ **{name}**: ❌ '{metric}' 컬럼 없음
+
+"
     
     # 순위 및 차이 분석
     if len(metric_results) >= 2:
         sorted_results = sorted(metric_results.items(), key=lambda x: x[1]['total'], reverse=True)
         
-        result += "🏆 **순위 및 차이 분석:**\n"
+        result += "🏆 **순위 및 차이 분석:**
+"
         for i, (name, data) in enumerate(sorted_results, 1):
             unit = "톤" if metric == "매출수량(M/T)" else "억원" if "매출액" in metric or "이익" in metric else ""
-            result += f"  {i}. {name}: {data['total']:,.0f}{unit}\n"
+            result += f"  {i}. {name}: {data['total']:,.0f}{unit}
+"
         
         if len(sorted_results) >= 2:
             top_name, top_data = sorted_results[0]
             second_name, second_data = sorted_results[1]
             diff = top_data['total'] - second_data['total']
-            diff_pct = (diff / second_data['total'] * 100) if second_data['total'] != 0 else 0
+            diff_pct = (diff / second_data['total'] * 100) if second_data['total'] \!= 0 else 0
             
-            result += f"\n📊 **{top_name}**이 **{second_name}**보다 {diff:,.0f}{unit} 많음 (+{diff_pct:.1f}%)\n"
-    
-    return result
-
-@tool
-def compare_datasets_by_division(division: str = None) -> str:
-    """여러 데이터셋에서 특정 사업부별 데이터를 비교합니다."""
-    datasets = get_datasets()
-    
-    if len(datasets) < 2:
-        return "❌ 비교하려면 최소 2개의 데이터셋이 필요합니다."
-    
-    result = f"🏢 사업부별 비교 분석"
-    if division:
-        result += f" - {division}"
-    result += ":\n\n"
-    
-    for name, df in datasets.items():
-        filtered_df = df
-        
-        if division and 'Division' in df.columns:
-            filtered_df = df[df["Division"].str.contains(division, na=False, case=False)]
-        
-        result += f"🗂️ **{name}**\n"
-        
-        if 'Division' in df.columns:
-            if division:
-                result += f"  📋 {division} 관련 데이터:\n"
-            else:
-                result += f"  📋 전체 사업부 현황:\n"
-            
-            # 매출수량 집계
-            if "매출수량(M/T)" in filtered_df.columns:
-                volume = filtered_df["매출수량(M/T)"].sum()
-                result += f"    • 매출수량: {volume:,.0f} 톤\n"
-            
-            # 매출액 집계  
-            if "1.매출액" in filtered_df.columns:
-                sales = filtered_df["1.매출액"].sum()
-                result += f"    • 매출액: {sales:,.0f} 억원\n"
-            
-            # 영업이익 집계
-            if "5.영업이익" in filtered_df.columns:
-                profit = filtered_df["5.영업이익"].sum()
-                result += f"    • 영업이익: {profit:,.0f} 억원\n"
-            
-            result += f"    • 레코드 수: {len(filtered_df):,}개\n"
-            
-            # 사업부별 상세 (전체 조회시)
-            if not division and "매출수량(M/T)" in filtered_df.columns:
-                division_summary = filtered_df.groupby('Division')['매출수량(M/T)'].sum().reset_index()
-                division_summary = division_summary.sort_values('매출수량(M/T)', ascending=False)
-                
-                if len(division_summary) > 0:
-                    result += f"    📊 상위 3개 사업부:\n"
-                    for idx, row in division_summary.head(3).iterrows():
-                        result += f"      {idx+1}. {row['Division']}: {row['매출수량(M/T)']:,.0f} 톤\n"
-        else:
-            result += f"  ❌ Division 컬럼 없음\n"
-        
-        result += "\n"
-    
-    return result
-
-@tool
-def integrated_dataset_analysis(metric: str = "매출수량(M/T)", group_by: str = "Division") -> str:
-    """모든 데이터셋을 통합하여 분석합니다."""
-    datasets = get_datasets()
-    
-    if len(datasets) < 2:
-        return "❌ 통합 분석하려면 최소 2개의 데이터셋이 필요합니다."
-    
-    # 모든 데이터셋 통합
-    combined_data = []
-    for name, df in datasets.items():
-        df_copy = df.copy()
-        df_copy['데이터셋'] = name
-        combined_data.append(df_copy)
-    
-    integrated_df = pd.concat(combined_data, ignore_index=True)
-    
-    result = f"📊 통합 데이터셋 분석 ({metric} 기준):\n\n"
-    result += f"🔗 **통합 정보:**\n"
-    result += f"  • 총 행 수: {len(integrated_df):,}개\n"
-    result += f"  • 데이터셋 수: {len(datasets)}개\n"
-    result += f"  • 통합 후 메모리: {integrated_df.memory_usage(deep=True).sum() / 1024 / 1024:.1f}MB\n\n"
-    
-    if metric in integrated_df.columns and group_by in integrated_df.columns:
-        # 그룹별 통합 분석
-        grouped = integrated_df.groupby(group_by)[metric].agg(['sum', 'mean', 'count']).reset_index()
-        grouped = grouped.sort_values('sum', ascending=False)
-        
-        result += f"📈 **{group_by}별 {metric} 통합 순위:**\n"
-        
-        # 단위 처리
-        if metric == "매출수량(M/T)":
-            unit = "톤"
-        elif "매출액" in metric or "이익" in metric:
-            unit = "억원"
-        else:
-            unit = ""
-        
-        for idx, row in grouped.head(10).iterrows():
-            result += f"  {idx+1}. {row[group_by]}: {row['sum']:,.0f}{unit} (평균: {row['mean']:,.0f}{unit})\n"
-        
-        # 데이터셋별 기여도 분석
-        result += f"\n🎯 **데이터셋별 기여도 분석:**\n"
-        dataset_contribution = integrated_df.groupby('데이터셋')[metric].sum().reset_index()
-        dataset_contribution = dataset_contribution.sort_values(metric, ascending=False)
-        
-        total_sum = dataset_contribution[metric].sum()
-        
-        for idx, row in dataset_contribution.iterrows():
-            contribution_pct = (row[metric] / total_sum * 100) if total_sum > 0 else 0
-            result += f"  • {row['데이터셋']}: {row[metric]:,.0f}{unit} ({contribution_pct:.1f}%)\n"
-        
-    else:
-        result += f"❌ '{metric}' 또는 '{group_by}' 컬럼을 찾을 수 없습니다.\n"
+            result += f"
+📊 **{top_name}**이 **{second_name}**보다 {diff:,.0f}{unit} 많음 (+{diff_pct:.1f}%)
+"
     
     return result

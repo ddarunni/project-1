@@ -136,6 +136,12 @@ celerybeat.pid
 
 # Environments
 .env
+.env.local
+.env.dev
+.env.prod
+.env.test
+.env.*
+!.env.example
 .envrc
 .venv
 env/
@@ -201,3 +207,41 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Security - Additional sensitive files
+*.key
+*.pem
+*.p12
+*.pfx
+secrets/
+credentials/
+config/secrets.yaml
+config/secrets.yml
+.secrets/
+**/*secret*
+**/*password*
+**/*credential*
+*.sqlite
+*.db
+
+# Data files (potentially sensitive)
+data/
+datasets/
+*.xlsx
+*.csv
+*.json
+!examples/*.json
+!sample_data.xlsx
+
+# IDE and editor files
+.vscode/settings.json
+.idea/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

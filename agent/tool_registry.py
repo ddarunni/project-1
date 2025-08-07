@@ -16,6 +16,13 @@ from agent.tools import (
     advanced_multi_column_query,
     comparative_analysis_tool,
     detect_relevant_columns,
+    # Phase 1.1: Enhanced Tools
+    smart_query_processor,
+    extract_complex_entities,
+    # Phase 1.2: Data Exploration Tools
+    get_unique_values,
+    get_column_info,
+    explore_dataset,
 )
 
 # ✅ LangGraph Studio, LangChain Agent, Streamlit 공통 등록용
@@ -104,5 +111,32 @@ registered_tools = [
         func=detect_relevant_columns,
         name="detect_relevant_columns",
         description="질문에서 관련 컬럼들을 자동 감지하고 추천합니다. 복잡한 질문 분석 시 먼저 사용하세요."
+    ),
+    # === Phase 1.1: Enhanced Tools ===
+    Tool.from_function(
+        func=smart_query_processor,
+        name="smart_query_processor",
+        description="복합 질문을 자동으로 파싱하여 처리합니다. '열연수출1그룹의 상반기 영업이익'과 같은 복잡한 한국어 질문에 최적화되어 있습니다."
+    ),
+    Tool.from_function(
+        func=extract_complex_entities,
+        name="extract_complex_entities", 
+        description="질문에서 그룹명, 기간, 메트릭 등을 정교하게 추출합니다. 복잡한 질문 분석용 헬퍼 도구입니다."
+    ),
+    # === Phase 1.2: Data Exploration Tools ===
+    Tool.from_function(
+        func=get_unique_values,
+        name="get_unique_values",
+        description="지정된 컬럼의 모든 고유값들을 나열합니다. '모든 그룹명', '가능한 국가 목록' 등의 질문에 사용하세요. FundsCenter 컬럼명을 사용하여 모든 그룹을 조회할 수 있습니다."
+    ),
+    Tool.from_function(
+        func=get_column_info,
+        name="get_column_info",
+        description="특정 컬럼의 상세 정보와 통계를 제공합니다. 데이터 분포, 최빈값, 통계 정보가 필요할 때 사용하세요."
+    ),
+    Tool.from_function(
+        func=explore_dataset,
+        name="explore_dataset",
+        description="전체 데이터셋의 구조와 모든 컬럼 정보를 제공합니다. 데이터셋 개요나 사용 가능한 컬럼을 알고 싶을 때 사용하세요."
     ),
 ]

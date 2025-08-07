@@ -28,6 +28,11 @@ class AgentState(TypedDict):
     output: str
     chat_history: Annotated[List[AnyMessage], operator.add]
     df: Any
+    # 다중 데이터셋 관련
+    datasets_info: dict  # 다중 데이터셋 정보 {name: dataframe}
+    dataset_count: int   # 업로드된 데이터셋 수
+    is_multi_dataset: bool  # 다중 파일 여부
+    active_dataset_name: str  # 현재 활성 데이터셋 이름
     # Context Aware Node 관련
     enhanced_input: str
     context_used: bool
@@ -349,6 +354,318 @@ def query_planning_node(state: AgentState) -> dict:
         "query_plan": query_plan
     }
 
+def multi_context_aware_node(state: AgentState) -> dict:
+    """다중 데이터셋 전용 컨텍스트 인식 노드입니다."""
+    print("--- Multi Dataset Context Aware 노드 실행 ---")
+    
+    current_input = state["input"]
+    chat_history = state.get("chat_history", [])
+    datasets_info = state.get("datasets_info", {})
+    
+    # 다중 파일 관련 참조어 패턴
+    multi_ref_patterns = ["두 파일", "각 파일", "파일들", "비교", "차이", "모든", "전체"]
+    
+    context_info = {
+        "has_reference": False,
+        "multi_dataset_context": True,
+        "available_datasets": list(datasets_info.keys()),
+        "enhancement_applied": False
+    }
+    
+    enhanced_input = current_input
+    context_used = False
+    
+    # 다중 파일 맥락에서 참조어 해결
+    has_multi_references = any(ref in current_input for ref in multi_ref_patterns)
+    
+    if has_multi_references:
+        context_used = True
+        context_info["has_reference"] = True
+        
+        # 데이터셋 정보를 컨텍스트에 추가
+        if len(datasets_info) >= 2:
+            dataset_hint = f"\n\n💡 업로드된 데이터셋: {', '.join(list(datasets_info.keys())[:3])}"
+            if len(datasets_info) > 3:
+                dataset_hint += f" 외 {len(datasets_info)-3}개"
+            enhanced_input = current_input + dataset_hint
+            context_info["enhancement_applied"] = True
+    
+    print(f"다중 파일 원본 질문: {current_input}")
+    print(f"다중 파일 향상된 질문: {enhanced_input}")
+    print(f"컨텍스트 사용: {context_used}")
+    
+    return {
+        "enhanced_input": enhanced_input,
+        "context_used": context_used,
+        "context_info": context_info
+    }
+
+def multi_intent_classification_node(state: AgentState) -> dict:
+    """다중 데이터셋 전용 의도 분류 노드입니다."""
+    print("--- Multi Dataset Intent Classification 노드 실행 ---")
+    
+    input_text = state.get("enhanced_input", state["input"]).lower()
+    datasets_info = state.get("datasets_info", {})
+    
+    # 다중 데이터셋 특화 의도 패턴
+    multi_intent_patterns = {
+        "comparison": ["비교", "compare", "vs", "대비", "차이", "비해", "보다", "간의"],
+        "aggregation": ["합계", "총", "전체", "모든", "통합", "종합"],
+        "ranking": ["상위", "하위", "순위", "가장", "최고", "최저", "top", "높은", "낮은"],
+        "cross_analysis": ["각각", "파일별", "데이터셋별", "서로", "상호"],
+        "summary": ["요약", "개요", "전반적", "종합적"]
+    }
+    
+    detected_intent = "multi_general"
+    confidence = 0.0
+    
+    for intent, patterns in multi_intent_patterns.items():
+        matches = sum(1 for pattern in patterns if pattern in input_text)
+        if matches > 0:
+            current_confidence = matches / len(patterns)
+            if current_confidence > confidence:
+                detected_intent = intent
+                confidence = current_confidence
+    
+    # 다중 데이터셋 복잡도 분석
+    complexity_indicators = {
+        "high": len(datasets_info) >= 3,  # 3개 이상 파일
+        "comparison_complex": any(word in input_text for word in ["세부", "상세", "분석"]),
+        "cross_reference": any(word in input_text for word in ["각각", "서로", "간의"])
+    }
+    
+    complexity = "high" if any(complexity_indicators.values()) else "medium"
+    
+    # 다중 데이터셋 전용 도구 추천
+    tool_predictions = {
+        "comparison": ["compare_datasets_summary", "compare_datasets_metrics", "compare_datasets_by_division"],
+        "aggregation": ["integrated_dataset_analysis"],
+        "cross_analysis": ["cross_dataset_comparison", "compare_datasets_by_division"],
+        "summary": ["compare_datasets_summary"]
+    }
+    
+    predicted_tools = tool_predictions.get(detected_intent, ["compare_datasets_summary"])
+    
+    intent_info = {
+        "intent": detected_intent,
+        "confidence": confidence,
+        "complexity": complexity,
+        "predicted_tools": predicted_tools,
+        "processing_path": "multi_dataset_agent",
+        "dataset_count": len(datasets_info),
+        "multi_dataset_specific": True
+    }
+    
+    print(f"다중 데이터셋 의도: {detected_intent} (신뢰도: {confidence:.2f})")
+    print(f"복잡도: {complexity}, 데이터셋 수: {len(datasets_info)}")
+    
+    return {
+        "intent_info": intent_info,
+        "processing_path": "multi_dataset_agent"
+    }
+
+def multi_query_planning_node(state: AgentState) -> dict:
+    """다중 데이터셋 전용 쿼리 계획 노드입니다."""
+    print("--- Multi Dataset Query Planning 노드 실행 ---")
+    
+    input_text = state.get("enhanced_input", state["input"]).lower()
+    intent_info = state.get("intent_info", {})
+    datasets_info = state.get("datasets_info", {})
+    
+    # 다중 데이터셋 실행 계획
+    execution_plan = {
+        "strategy": "multi_dataset_analysis",
+        "recommended_tools": [],
+        "parameters": {
+            "dataset_count": len(datasets_info),
+            "dataset_names": list(datasets_info.keys())
+        }
+    }
+    
+    detected_intent = intent_info.get("intent", "multi_general")
+    
+    # 의도별 실행 계획
+    if detected_intent == "comparison":
+        execution_plan["strategy"] = "dataset_comparison"
+        execution_plan["recommended_tools"] = ["compare_datasets_metrics", "compare_datasets_by_division"]
+        
+    elif detected_intent == "aggregation":
+        execution_plan["strategy"] = "dataset_integration"
+        execution_plan["recommended_tools"] = ["integrated_dataset_analysis"]
+        
+    elif detected_intent == "cross_analysis":
+        execution_plan["strategy"] = "cross_dataset_analysis"  
+        execution_plan["recommended_tools"] = ["cross_dataset_comparison"]
+        
+    else:
+        execution_plan["strategy"] = "multi_dataset_summary"
+        execution_plan["recommended_tools"] = ["compare_datasets_summary"]
+    
+    query_plan = {
+        "strategy": execution_plan["strategy"],
+        "execution_plan": execution_plan,
+        "confidence": min(0.9, 0.5 + 0.1 * len(datasets_info)),
+        "multi_dataset_optimized": True,
+        "dataset_info": {
+            "count": len(datasets_info),
+            "names": list(datasets_info.keys())[:3]  # 처음 3개만
+        }
+    }
+    
+    print(f"다중 데이터셋 전략: {execution_plan['strategy']}")
+    print(f"추천 도구: {execution_plan['recommended_tools']}")
+    
+    return {
+        "query_plan": query_plan
+    }
+
+def dataset_routing_node(state: AgentState) -> str:
+    """단일/다중 파일에 따라 처리 경로를 분기합니다."""
+    print("--- Dataset Routing 노드 실행 ---")
+    
+    dataset_count = state.get("dataset_count", 1)
+    is_multi_dataset = state.get("is_multi_dataset", False)
+    input_text = state.get("enhanced_input", state["input"]).lower()
+    
+    # 다중 파일 관련 키워드 감지
+    multi_dataset_keywords = [
+        "비교", "compare", "vs", "대비", "차이", "파일", "데이터셋", 
+        "각각", "서로", "간의", "전체", "통합", "모든", "두", "모두"
+    ]
+    
+    has_comparison_intent = any(keyword in input_text for keyword in multi_dataset_keywords)
+    
+    print(f"데이터셋 수: {dataset_count}")
+    print(f"다중 파일 여부: {is_multi_dataset}")
+    print(f"비교 의도 감지: {has_comparison_intent}")
+    
+    # 분기 로직
+    if dataset_count > 1 and (is_multi_dataset or has_comparison_intent):
+        print(">> 경로: 다중 데이터셋 경로")
+        return "multi_dataset_path"
+    else:
+        print(">> 경로: 단일 데이터셋 경로")
+        return "single_dataset_path"
+
+def single_dataset_agent(state: AgentState, agent_executor: AgentExecutor) -> dict:
+    """단일 데이터셋 전용 처리 노드입니다."""
+    print("--- 단일 데이터셋 에이전트 실행 ---")
+    
+    # 기존 agent_node와 동일한 로직
+    import agent.tools as tools_module
+    if hasattr(tools_module, 'set_dataframe'):
+        tools_module.set_dataframe(state["df"])
+    
+    input_to_use = state.get("enhanced_input", state["input"])
+    print(f"사용할 입력: {input_to_use}")
+    
+    result = agent_executor.invoke({
+        "input": input_to_use,
+        "chat_history": state["chat_history"]
+    })
+    
+    # 단일 파일 출처 정보
+    df = state.get("df")
+    dataset_name = state.get("active_dataset_name", "업로드된 파일")
+    sheet_info = f"📊 **데이터 출처:** {dataset_name}"
+    
+    if df is not None:
+        sheet_info += f" (총 {len(df):,}행, {len(df.columns)}개 컬럼)"
+    
+    return {
+        "output": result["output"],
+        "intermediate_steps": result.get("intermediate_steps", []),
+        "source_info": sheet_info
+    }
+
+def multi_dataset_agent(state: AgentState, agent_executor: AgentExecutor) -> dict:
+    """다중 데이터셋 전용 처리 노드입니다."""
+    print("--- 다중 데이터셋 에이전트 실행 ---")
+    
+    datasets_info = state.get("datasets_info", {})
+    input_text = state.get("enhanced_input", state["input"]).lower()
+    
+    # 다중 데이터셋 도구 설정
+    import agent.tools as tools_module
+    if hasattr(tools_module, 'set_datasets'):
+        tools_module.set_datasets(datasets_info)
+        print(f"다중 데이터셋 설정 완료: {list(datasets_info.keys())}")
+    
+    # 현재 활성 데이터셋도 단일 도구들을 위해 설정
+    if hasattr(tools_module, 'set_dataframe') and state.get("df") is not None:
+        tools_module.set_dataframe(state["df"])
+    
+    input_to_use = state.get("enhanced_input", state["input"])
+    
+    # 비교 분석 의도가 명확한 경우 힌트 추가
+    comparison_keywords = ["비교", "compare", "vs", "대비", "차이"]
+    has_comparison = any(keyword in input_text for keyword in comparison_keywords)
+    
+    if has_comparison and len(datasets_info) >= 2:
+        comparison_hint = f"\n\n💡 참고: 현재 {len(datasets_info)}개 데이터셋 업로드됨 - "
+        comparison_hint += "compare_datasets_summary(), compare_datasets_metrics(), compare_datasets_by_division() 등의 도구 사용 권장"
+        input_to_use += comparison_hint
+    
+    print(f"다중 데이터셋 질문: {input_to_use}")
+    
+    result = agent_executor.invoke({
+        "input": input_to_use,
+        "chat_history": state["chat_history"]
+    })
+    
+    # 다중 파일 출처 정보
+    source_info = f"📊 **데이터 출처:** {len(datasets_info)}개 데이터셋\n"
+    for name, df in datasets_info.items():
+        source_info += f"  • {name}: {len(df):,}행 × {len(df.columns)}개 컬럼\n"
+    
+    return {
+        "output": result["output"],
+        "intermediate_steps": result.get("intermediate_steps", []),
+        "source_info": source_info.strip()
+    }
+
+def dataset_comparison_node(state: AgentState) -> dict:
+    """데이터셋 간 비교 전용 노드입니다."""
+    print("--- 데이터셋 비교 노드 실행 ---")
+    
+    datasets_info = state.get("datasets_info", {})
+    
+    if len(datasets_info) < 2:
+        return {
+            "output": "❌ 데이터셋 비교를 위해서는 최소 2개의 파일이 필요합니다.",
+            "source_info": "비교 분석 실패"
+        }
+    
+    # 기본 비교 분석 수행
+    import agent.tools as tools_module
+    if hasattr(tools_module, 'set_datasets'):
+        tools_module.set_datasets(datasets_info)
+    
+    try:
+        # compare_datasets_summary 도구 직접 호출
+        if hasattr(tools_module, 'compare_datasets_summary'):
+            summary_result = tools_module.compare_datasets_summary()
+        else:
+            summary_result = "비교 도구를 사용할 수 없습니다."
+        
+        # 추가 메트릭 비교
+        if hasattr(tools_module, 'compare_datasets_metrics'):
+            metrics_result = tools_module.compare_datasets_metrics("매출수량(M/T)")
+            full_result = f"{summary_result}\n\n{metrics_result}"
+        else:
+            full_result = summary_result
+        
+        return {
+            "output": full_result,
+            "source_info": f"📊 {len(datasets_info)}개 데이터셋 자동 비교 분석 완료"
+        }
+        
+    except Exception as e:
+        return {
+            "output": f"❌ 데이터셋 비교 중 오류가 발생했습니다: {str(e)}",
+            "source_info": "비교 분석 오류"
+        }
+
 def extract_comparison_entities(text: str) -> list:
     """비교 대상 엔티티를 추출합니다."""
     entities = []
@@ -440,35 +757,50 @@ def fallback_node(state: AgentState) -> dict:
     return {"output": "죄송합니다. 이해할 수 있는 분석 키워드를 찾지 못했어요. '사업부', '매출' 등의 키워드를 사용해 다시 질문해 주세요."}
 
 def create_graph_workflow(agent_executor: AgentExecutor) -> StateGraph:
-    """Phase 1 향상된 LangGraph 워크플로우를 생성하고 컴파일된 실행기를 반환합니다."""
+    """향상된 LangGraph 워크플로우를 생성하고 컴파일된 실행기를 반환합니다."""
     workflow = StateGraph(AgentState)
 
     # 노드들 추가
     workflow.add_node("router_node", router_node)
     workflow.add_node("context_aware_node", context_aware_node)
+    workflow.add_node("multi_context_aware_node", multi_context_aware_node)
     workflow.add_node("intent_classification_node", intent_classification_node)
+    workflow.add_node("multi_intent_classification_node", multi_intent_classification_node)
     workflow.add_node("query_planning_node", query_planning_node)
-    workflow.add_node("agent_node", lambda state: agent_node(state, agent_executor))
-    workflow.add_node("fallback_node", fallback_node)
+    workflow.add_node("multi_query_planning_node", multi_query_planning_node)
+    workflow.add_node("dataset_routing_node", dataset_routing_node)
+    
+    # 데이터셋별 전용 노드들
+    workflow.add_node("single_dataset_agent", lambda state: single_dataset_agent(state, agent_executor))
+    workflow.add_node("multi_dataset_agent", lambda state: multi_dataset_agent(state, agent_executor))
 
-    # Phase 1 워크플로우: Router → Context Aware → Intent Classification → Query Planning → 분기
+    # 워크플로우 구성: Router → Dataset Routing → 각 경로별 최적화된 처리
     workflow.set_entry_point("router_node")
-    workflow.add_edge("router_node", "context_aware_node")
-    workflow.add_edge("context_aware_node", "intent_classification_node")
-    workflow.add_edge("intent_classification_node", "query_planning_node")
+    workflow.add_edge("router_node", "dataset_routing_node")
 
-    # Query Planning 결과에 따른 분기
+    # Dataset Routing 결과에 따른 분기 (조기 분기)
     workflow.add_conditional_edges(
-        "query_planning_node",
-        enhanced_route_logic,
+        "dataset_routing_node",
+        dataset_routing_node,
         {
-            "agent_node": "agent_node", 
-            "fallback_node": "fallback_node"
+            "single_dataset_path": "context_aware_node",  # 단일 파일: 기존 파이프라인
+            "multi_dataset_path": "multi_context_aware_node"  # 다중 파일: 전용 파이프라인
         }
     )
     
-    workflow.add_edge("agent_node", END)
-    workflow.add_edge("fallback_node", END)
+    # 단일 파일 경로: 기존 파이프라인
+    workflow.add_edge("context_aware_node", "intent_classification_node")
+    workflow.add_edge("intent_classification_node", "query_planning_node")
+    workflow.add_edge("query_planning_node", "single_dataset_agent")
+    
+    # 다중 파일 경로: 완전한 파이프라인 (Intent/Query Planning 포함)
+    workflow.add_edge("multi_context_aware_node", "multi_intent_classification_node")
+    workflow.add_edge("multi_intent_classification_node", "multi_query_planning_node")  
+    workflow.add_edge("multi_query_planning_node", "multi_dataset_agent")
+    
+    # 종료 엣지들
+    workflow.add_edge("single_dataset_agent", END)
+    workflow.add_edge("multi_dataset_agent", END)
 
     return workflow.compile()
 

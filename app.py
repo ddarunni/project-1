@@ -21,26 +21,172 @@ anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
 st.set_page_config(page_title="📊 철강 데이터 분석 Q&A", layout="wide")
 st.title("📊 철강 실적 데이터 분석 (LangGraph 기반)")
 
-# 파일 업로드
-uploaded_file = st.file_uploader("엑셀 파일 업로드", type=["xlsx", "csv"])
-if uploaded_file:
-    # 시트 목록 확인
-    xls = pd.ExcelFile(uploaded_file)
-    sheet_name = st.selectbox("시트 선택", xls.sheet_names)
-    df = xls.parse(sheet_name)
+# 다중 파일 업로드
+uploaded_files = st.file_uploader(
+    "엑셀 파일 업로드 (여러 파일 선택 가능)", 
+    type=["xlsx", "csv"], 
+    accept_multiple_files=True
+)
 
-    # 컬럼 정제
-    df.columns = df.columns.str.strip().str.replace(" ", "").str.replace("\t", "")
-    st.dataframe(df, use_container_width=True)
+# 세션 상태 초기화
+if "uploaded_datasets" not in st.session_state:
+    st.session_state.uploaded_datasets = {}
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+if "active_dataset" not in st.session_state:
+    st.session_state.active_dataset = None
 
-    # 채팅 기록 초기화
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-    if "df_for_chat" not in st.session_state:
-        st.session_state.df_for_chat = None
+if uploaded_files:
+    # 업로드된 파일들 처리
+    for uploaded_file in uploaded_files:
+        file_key = f"{uploaded_file.name}_{uploaded_file.size}"
+        
+        # 이미 처리된 파일인지 확인
+        if file_key not in st.session_state.uploaded_datasets:
+            try:
+                # 엑셀 파일 처리
+                if uploaded_file.name.endswith('.xlsx'):
+                    xls = pd.ExcelFile(uploaded_file)
+                    sheets_data = {}
+                    
+                    for sheet_name in xls.sheet_names:
+                        df = xls.parse(sheet_name)
+                        df.columns = df.columns.str.strip().str.replace(" ", "").str.replace("\t", "")
+                        sheets_data[sheet_name] = df
+                    
+                    st.session_state.uploaded_datasets[file_key] = {
+                        'name': uploaded_file.name,
+                        'sheets': sheets_data,
+                        'file_type': 'excel'
+                    }
+                    
+                # CSV 파일 처리  
+                elif uploaded_file.name.endswith('.csv'):
+                    df = pd.read_csv(uploaded_file)
+                    df.columns = df.columns.str.strip().str.replace(" ", "").str.replace("\t", "")
+                    
+                    st.session_state.uploaded_datasets[file_key] = {
+                        'name': uploaded_file.name,
+                        'sheets': {'Sheet1': df},
+                        'file_type': 'csv'
+                    }
+                    
+            except Exception as e:
+                st.error(f"파일 '{uploaded_file.name}' 처리 중 오류: {str(e)}")
     
-    # 현재 데이터프레임을 세션에 저장
-    st.session_state.df_for_chat = df
+    # 업로드된 파일 목록 표시
+    if st.session_state.uploaded_datasets:
+        st.markdown("### 📁 업로드된 파일 목록")
+        
+        # 파일 선택 UI
+        file_options = []
+        file_keys = []
+        for key, dataset in st.session_state.uploaded_datasets.items():
+            for sheet_name in dataset['sheets'].keys():
+                display_name = f"{dataset['name']} - {sheet_name}"
+                file_options.append(display_name)
+                file_keys.append((key, sheet_name))
+        
+        selected_idx = st.selectbox(
+            "🎯 분석할 데이터셋 선택:", 
+            range(len(file_options)),
+            format_func=lambda x: file_options[x]
+        )
+        
+        if selected_idx is not None:
+            selected_key, selected_sheet = file_keys[selected_idx]
+            selected_dataset = st.session_state.uploaded_datasets[selected_key]
+            df = selected_dataset['sheets'][selected_sheet]
+            
+            # 활성 데이터셋 저장
+            st.session_state.active_dataset = {
+                'df': df,
+                'name': f"{selected_dataset['name']} - {selected_sheet}",
+                'file_key': selected_key,
+                'sheet_name': selected_sheet
+            }
+            
+            # 데이터 미리보기
+            with st.expander(f"📊 데이터 미리보기: {selected_dataset['name']} - {selected_sheet}", expanded=True):
+                col1, col2, col3, col4 = st.columns(4)
+                with col1:
+                    st.metric("행 수", f"{len(df):,}")
+                with col2:
+                    st.metric("열 수", f"{len(df.columns)}")
+                with col3:
+                    st.metric("메모리", f"{df.memory_usage(deep=True).sum() / 1024 / 1024:.1f}MB")
+                with col4:
+                    st.metric("결측값", f"{df.isnull().sum().sum():,}")
+                
+                st.dataframe(df.head(100), use_container_width=True)
+        
+        # 파일 비교 섹션
+        if len(st.session_state.uploaded_datasets) >= 2:
+            st.markdown("### 🔍 파일 간 비교 분석")
+            
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                compare_idx1 = st.selectbox(
+                    "비교 대상 1:",
+                    range(len(file_options)),
+                    format_func=lambda x: file_options[x],
+                    key="compare1"
+                )
+            
+            with col2:
+                compare_idx2 = st.selectbox(
+                    "비교 대상 2:",
+                    range(len(file_options)),
+                    format_func=lambda x: file_options[x],
+                    key="compare2"
+                )
+            
+            if compare_idx1 != compare_idx2:
+                if st.button("📈 비교 분석 시작"):
+                    key1, sheet1 = file_keys[compare_idx1]
+                    key2, sheet2 = file_keys[compare_idx2]
+                    
+                    df1 = st.session_state.uploaded_datasets[key1]['sheets'][sheet1]
+                    df2 = st.session_state.uploaded_datasets[key2]['sheets'][sheet2]
+                    
+                    # 기본 비교 정보
+                    st.markdown("#### 📋 기본 정보 비교")
+                    
+                    comparison_data = pd.DataFrame({
+                        file_options[compare_idx1]: [
+                            len(df1),
+                            len(df1.columns),
+                            f"{df1.memory_usage(deep=True).sum() / 1024 / 1024:.1f}MB",
+                            df1.isnull().sum().sum()
+                        ],
+                        file_options[compare_idx2]: [
+                            len(df2),
+                            len(df2.columns), 
+                            f"{df2.memory_usage(deep=True).sum() / 1024 / 1024:.1f}MB",
+                            df2.isnull().sum().sum()
+                        ]
+                    }, index=['행 수', '열 수', '메모리 사용량', '결측값 수'])
+                    
+                    st.dataframe(comparison_data)
+                    
+                    # 공통 컬럼 확인
+                    common_cols = set(df1.columns) & set(df2.columns)
+                    if common_cols:
+                        st.markdown(f"#### 🔗 공통 컬럼 ({len(common_cols)}개)")
+                        st.write(", ".join(sorted(common_cols)))
+                    
+                    # 차이점 컬럼
+                    diff_cols1 = set(df1.columns) - set(df2.columns)
+                    diff_cols2 = set(df2.columns) - set(df1.columns)
+                    
+                    if diff_cols1:
+                        st.markdown(f"#### 🔸 {file_options[compare_idx1]} 고유 컬럼")
+                        st.write(", ".join(sorted(diff_cols1)))
+                    
+                    if diff_cols2:
+                        st.markdown(f"#### 🔸 {file_options[compare_idx2]} 고유 컬럼")
+                        st.write(", ".join(sorted(diff_cols2)))
     
     # 질문 예시 스타터 (채팅 기록이 없을 때만 표시)
     if not st.session_state.chat_history:
@@ -49,7 +195,7 @@ if uploaded_file:
         # 키워드 안내 문구
         st.info("📌 **효과적인 질문을 위한 키워드 안내**  \n"
                 "다음 키워드를 포함하여 질문하시면 더 정확한 답변을 받을 수 있습니다:  \n"
-                "**사업실**, **그룹**, **판매량**, **매출액**, **영업이익**, **세전이익**, **공급사**, **고객사**, **국가**, **판매유형**")
+                "**사업실**, **그룹**, **판매량**, **매출액**, **영업이익**, **세전이익**, **공급사**, **고객사**, **국가**, **판매유형(삼국간,수출,내수)**")
         
         
         starter_examples = [
@@ -62,6 +208,16 @@ if uploaded_file:
             "2023년 상반기 전체 매출 수량은 얼마인가요?",
             "2023년의 영업이익은 얼마인가요?",
         ]
+        
+        # 다중 파일일 경우 비교 질문 예시 추가
+        if len(st.session_state.uploaded_datasets) >= 2:
+            comparison_examples = [
+                "두 파일의 전체 매출액을 비교해주세요",
+                "각 파일의 상위 5개 사업실 영업이익을 비교분석해주세요",
+                "파일별 2023년 매출수량 차이를 알려주세요",
+                "두 데이터셋의 공급사별 매출 현황을 비교해주세요",
+            ]
+            starter_examples.extend(comparison_examples)
         
         # 질문 예시를 버튼으로 표시
         cols = st.columns(2)
@@ -224,11 +380,53 @@ if uploaded_file:
                     chat_context.append(f"Q: {chat['question']}")
                     chat_context.append(f"A: {chat['answer']}")
                 
-                # LangGraph 실행
+                # LangGraph 실행 - 다중 데이터셋 정보 전달
+                current_df = None
+                datasets_info = {}
+                dataset_count = 0
+                active_dataset_name = "업로드된 파일"
+                
+                # 현재 활성 데이터셋 설정
+                if st.session_state.active_dataset:
+                    current_df = st.session_state.active_dataset['df']
+                    active_dataset_name = st.session_state.active_dataset['name']
+                elif hasattr(st.session_state, 'df_for_chat'):
+                    current_df = st.session_state.df_for_chat
+                
+                if current_df is None:
+                    st.error("분석할 데이터셋을 선택해주세요.")
+                    st.stop()
+                
+                # 다중 데이터셋 정보 수집
+                if hasattr(st.session_state, 'uploaded_datasets') and st.session_state.uploaded_datasets:
+                    dataset_count = len(st.session_state.uploaded_datasets)
+                    
+                    # 모든 데이터셋을 datasets_info에 포함
+                    for file_key, dataset_info in st.session_state.uploaded_datasets.items():
+                        for sheet_name, df in dataset_info['sheets'].items():
+                            dataset_name = f"{dataset_info['name']} - {sheet_name}"
+                            datasets_info[dataset_name] = df
+                else:
+                    dataset_count = 1
+                    datasets_info[active_dataset_name] = current_df
+                
+                # 다중 파일 여부 결정
+                is_multi_dataset = dataset_count > 1
+                
+                print(f"데이터셋 수: {dataset_count}, 다중 파일: {is_multi_dataset}")
+                print(f"활성 데이터셋: {active_dataset_name}")
+                print(f"전체 데이터셋: {list(datasets_info.keys())}")
+                
+                # LangGraph 상태에 다중 데이터셋 정보 전달
                 result = graph_executor.invoke({
                     "input": question, 
-                    "df": st.session_state.df_for_chat,
-                    "chat_history": chat_context
+                    "df": current_df,
+                    "chat_history": chat_context,
+                    # 다중 데이터셋 관련 정보
+                    "datasets_info": datasets_info,
+                    "dataset_count": dataset_count,
+                    "is_multi_dataset": is_multi_dataset,
+                    "active_dataset_name": active_dataset_name
                 })
                 
                 # 채팅 기록에 추가 (Phase 1 노드 정보 포함)
