@@ -399,13 +399,14 @@ if uploaded_files:
                 
                 # 다중 데이터셋 정보 수집
                 if hasattr(st.session_state, 'uploaded_datasets') and st.session_state.uploaded_datasets:
-                    dataset_count = len(st.session_state.uploaded_datasets)
-                    
                     # 모든 데이터셋을 datasets_info에 포함
                     for file_key, dataset_info in st.session_state.uploaded_datasets.items():
                         for sheet_name, df in dataset_info['sheets'].items():
                             dataset_name = f"{dataset_info['name']} - {sheet_name}"
                             datasets_info[dataset_name] = df
+                    
+                    # 실제 시트 개수로 카운트 (더 정확)
+                    dataset_count = len(datasets_info)
                 else:
                     dataset_count = 1
                     datasets_info[active_dataset_name] = current_df

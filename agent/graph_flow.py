@@ -768,7 +768,6 @@ def create_graph_workflow(agent_executor: AgentExecutor) -> StateGraph:
     workflow.add_node("multi_intent_classification_node", multi_intent_classification_node)
     workflow.add_node("query_planning_node", query_planning_node)
     workflow.add_node("multi_query_planning_node", multi_query_planning_node)
-    workflow.add_node("dataset_routing_node", dataset_routing_node)
     
     # 데이터셋별 전용 노드들
     workflow.add_node("single_dataset_agent", lambda state: single_dataset_agent(state, agent_executor))
@@ -776,11 +775,10 @@ def create_graph_workflow(agent_executor: AgentExecutor) -> StateGraph:
 
     # 워크플로우 구성: Router → Dataset Routing → 각 경로별 최적화된 처리
     workflow.set_entry_point("router_node")
-    workflow.add_edge("router_node", "dataset_routing_node")
-
-    # Dataset Routing 결과에 따른 분기 (조기 분기)
+    
+    # Router에서 직접 Dataset Routing 조건부 분기
     workflow.add_conditional_edges(
-        "dataset_routing_node",
+        "router_node",
         dataset_routing_node,
         {
             "single_dataset_path": "context_aware_node",  # 단일 파일: 기존 파이프라인

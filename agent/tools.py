@@ -17,24 +17,12 @@ def get_dataframe() -> pd.DataFrame:
         raise ValueError("DataFrame이 설정되지 않았습니다. set_dataframe()을 먼저 호출하세요.")
     return _global_df
 
-@tool
-def get_sales_volume_by_division(division: str = None, year: int = None) -> str:
-    """지정된 사업부와 연도 기준으로 매출수량(M/T)을 집계합니다."""
-    df = get_dataframe()
-    if division:
-        df = df[df["Division"].str.contains(division, na=False)]
-    if year:
-        df = df[df["Period/Year"].astype(str).str.startswith(str(year))]
-    total_volume = df["매출수량(M/T)"].sum()
-    return f"{year}년 {division}의 총 매출 수량은 {total_volume:,.0f} 톤입니다."
+# DEPRECATED: get_sales_volume_by_division - replaced by smart_query_processor
+# Use smart_query_processor for questions like "2023년 스테인리스의 매출수량"
 
-@tool
-def get_total_sales_volume_by_division(division: str) -> str:
-    """특정 사업부(Division)에 대한 전체 매출수량(M/T)을 계산합니다."""
-    df = get_dataframe()
-    filtered = df[df["Division"].str.contains(division, na=False)]
-    total = filtered["매출수량(M/T)"].sum()
-    return f"{division}의 총 매출수량은 {total:,.0f} 톤입니다."
+# DEPRECATED: get_total_sales_volume_by_division - replaced by smart_query_processor for specific divisions
+# For "전체" queries, use get_overall_summary() instead
+# For specific divisions, use smart_query_processor("스테인리스의 매출수량")
 
 @tool
 def get_total_sales_volume_by_fund(fund_center: str) -> str:
@@ -52,53 +40,28 @@ def get_total_sales_volume_by_year(year: int) -> str:
     total = filtered["매출수량(M/T)"].sum()
     return f"{year}년 전체 매출수량은 {total:,.0f} 톤입니다."
 
-@tool
-def get_operating_profit_by_division(division: str) -> str:
-    """특정 사업부(Division)의 전체 영업이익(5.영업이익)을 계산합니다."""
-    df = get_dataframe()
-    filtered = df[df["Division"].str.contains(division, na=False)]
-    total = filtered["5.영업이익"].sum()
-    return f"{division}의 총 영업이익은 {total:,.0f}원입니다."
+# DEPRECATED: get_operating_profit_by_division - replaced by smart_query_processor
+# Use smart_query_processor for questions like "스테인리스의 영업이익"
 
-@tool
-def get_operating_profit_by_year(year: int) -> str:
-    """특정 연도(Period/Year)의 전체 영업이익(5.영업이익)을 계산합니다."""
-    df = get_dataframe()
-    filtered = df[df["Period/Year"].astype(str).str.contains(str(year))]
-    total = filtered["5.영업이익"].sum()
-    return f"{year}년의 전체 영업이익은 {total:,.0f}원입니다."
+# @tool
+# def get_operating_profit_by_year(year: int) -> str:
+#     """특정 연도(Period/Year)의 전체 영업이익(5.영업이익)을 계산합니다."""
+#     df = get_dataframe()
+#     filtered = df[df["Period/Year"].astype(str).str.contains(str(year))]
+#     total = filtered["5.영업이익"].sum()
+#     return f"{year}년의 전체 영업이익은 {total:,.0f}원입니다."
 
-@tool
-def get_sales_amount_by_division(division: str) -> str:
-    """특정 사업부(Division)의 전체 매출액(1.매출액)을 계산합니다."""
-    df = get_dataframe()
-    filtered = df[df["Division"].str.contains(division, na=False)]
-    total = filtered["1.매출액"].sum()
-    return f"{division}의 총 매출액은 {total:,.0f}원입니다."
+# DEPRECATED: get_sales_amount_by_division - replaced by smart_query_processor
+# Use smart_query_processor for questions like "스테인리스의 매출액"
 
-@tool
-def get_pre_tax_profit_by_division(division: str) -> str:
-    """특정 사업부(Division)의 전체 세전이익(8.세전이익)을 계산합니다."""
-    df = get_dataframe()
-    filtered = df[df["Division"].str.contains(division, na=False)]
-    total = filtered["8.세전이익"].sum()
-    return f"{division}의 총 세전이익은 {total:,.0f}원입니다."
+# DEPRECATED: get_pre_tax_profit_by_division - replaced by smart_query_processor
+# Use smart_query_processor for questions like "스테인리스의 세전이익"
 
-@tool
-def get_sales_volume_by_supplier(supplier: str) -> str:
-    """특정 공급사(Supplier)의 전체 매출수량(M/T)을 계산합니다."""
-    df = get_dataframe()
-    filtered = df[df["Supplier"].str.contains(supplier, na=False)]
-    total = filtered["매출수량(M/T)"].sum()
-    return f"{supplier} 공급사의 총 매출수량은 {total:,.0f} 톤입니다."
+# DEPRECATED: get_sales_volume_by_supplier - replaced by smart_query_processor
+# Use smart_query_processor for questions like "POSCO 공급사의 매출수량"
 
-@tool
-def get_sales_volume_by_country(country: str) -> str:
-    """특정 국가(Country)의 전체 매출수량(M/T)을 계산합니다."""
-    df = get_dataframe()
-    filtered = df[df["Country"].str.contains(country, na=False)]
-    total = filtered["매출수량(M/T)"].sum()
-    return f"{country}의 총 매출수량은 {total:,.0f} 톤입니다."
+# DEPRECATED: get_sales_volume_by_country - replaced by smart_query_processor
+# Use smart_query_processor for questions like "한국의 매출수량"
 
 @tool
 def get_overall_summary() -> str:
@@ -205,36 +168,72 @@ def _advanced_multi_column_query(
                 for idx, row in df.iterrows():
                     parsed_info = _parse_period_year(row['Period/Year'])
                     
-                    # 연도 매칭
-                    if year and 'year' in parsed_info:
-                        if str(year) == str(parsed_info['year']):
-                            matched_rows.append(idx)
-                            continue
+                    # AND 조건: 연도와 기간 둘 다 만족해야 함
+                    year_match = True
+                    period_match = True
                     
-                    # 상반기/하반기 매칭
-                    if "상반기" in period and parsed_info.get('half_year') == '상반기':
-                        matched_rows.append(idx)
-                    elif "하반기" in period and parsed_info.get('half_year') == '하반기':
-                        matched_rows.append(idx)
-                    # 분기 매칭
+                    # 연도 조건 검사
+                    if year:
+                        if 'year' not in parsed_info or str(year) != str(parsed_info['year']):
+                            year_match = False
+                    
+                    # 기간 조건 검사
+                    if "상반기" in period:
+                        if parsed_info.get('half_year') != '상반기':
+                            period_match = False
+                    elif "하반기" in period:
+                        if parsed_info.get('half_year') != '하반기':
+                            period_match = False
                     elif re.search(r'(\d)분기', period):
                         quarter_match = re.search(r'(\d)분기', period)
-                        if quarter_match and parsed_info.get('quarter') == f"{quarter_match.group(1)}분기":
-                            matched_rows.append(idx)
+                        if quarter_match and parsed_info.get('quarter') != f"{quarter_match.group(1)}분기":
+                            period_match = False
+                    # 월 범위 조건 처리
+                    elif re.search(r'(\d+)월부터\s*(\d+)월|(\d+)월-(\d+)월', period):
+                        # 월 범위 추출
+                        range_match = re.search(r'(\d+)월부터\s*(\d+)월', period) or re.search(r'(\d+)월-(\d+)월', period)
+                        if range_match:
+                            start_month = int(range_match.group(1))
+                            end_month = int(range_match.group(2))
+                            # 데이터의 월이 범위 안에 있는지 확인
+                            data_month = parsed_info.get('month_number')
+                            if data_month is None or not (start_month <= data_month <= end_month):
+                                period_match = False
+                    
+                    # 둘 다 만족하는 경우만 추가
+                    if year_match and period_match:
+                        matched_rows.append(idx)
                 
                 if matched_rows:
                     df = df.loc[matched_rows]
                     filters_applied.append(f"기간: {period} (스마트매칭, {len(matched_rows)}개 레코드)")
                 else:
                     # Fallback: 기존 패턴 매칭
+                    print(f"스마트매칭 실패, Fallback 사용. 기간: {period}")
                     if "상반기" in period:
                         df = df[df["Period/Year"].astype(str).str.contains("상반기|1분기|2분기|January|February|March|April|May|June", na=False)]
+                        filters_applied.append(f"기간: {period} (Fallback-상반기, {len(df)}개 레코드)")
                     elif "하반기" in period:
                         df = df[df["Period/Year"].astype(str).str.contains("하반기|3분기|4분기|July|August|September|October|November|December", na=False)]
+                        filters_applied.append(f"기간: {period} (Fallback-하반기, {len(df)}개 레코드)")
+                    elif re.search(r'(\d+)월부터\s*(\d+)월|(\d+)월-(\d+)월', period):
+                        # 월 범위 Fallback
+                        range_match = re.search(r'(\d+)월부터\s*(\d+)월', period) or re.search(r'(\d+)월-(\d+)월', period)
+                        if range_match:
+                            start_month = int(range_match.group(1))
+                            end_month = int(range_match.group(2))
+                            # 영어 월명과 한글 월명 모두 지원
+                            month_names = ['January', 'February', 'March', 'April', 'May', 'June',
+                                          'July', 'August', 'September', 'October', 'November', 'December']
+                            target_months = month_names[start_month-1:end_month]
+                            korean_months = [f"{i}월" for i in range(start_month, end_month+1)]
+                            pattern = '|'.join(target_months + korean_months)
+                            df = df[df["Period/Year"].astype(str).str.contains(pattern, na=False)]
+                            filters_applied.append(f"기간: {period} (Fallback-월범위, {len(df)}개 레코드)")
                     else:
                         df = df[df["Period/Year"].astype(str).str.contains(period, na=False)]
-                    available_periods = ", ".join(unique_periods[:3])
-                    filters_applied.append(f"기간: {period} (패턴매칭, 사용가능: {available_periods}...)")
+                        available_periods = ", ".join(unique_periods[:3])
+                        filters_applied.append(f"기간: {period} (패턴매칭, 사용가능: {available_periods}...)")
         else:
             filters_applied.append(f"기간: {period} (Period/Year 컬럼 없음)")
     
@@ -268,41 +267,29 @@ def _advanced_multi_column_query(
         total = df[metric].sum()
         filtered_count = len(df)
         
-        # 단위 처리
+        # 단위 처리 및 값 변환
         if metric == "매출수량(M/T)":
             unit = "톤"
+            display_value = f"{total:,.0f}{unit}"
         elif "매출액" in metric or "이익" in metric:
-            unit = "억원" 
+            # 원 단위 데이터를 억원 단위로 변환
+            billion_value = total / 100000000  # 1억 = 100,000,000
+            if billion_value >= 1:
+                display_value = f"{billion_value:,.0f}억원"
+            else:
+                display_value = f"{total:,.0f}원"
         else:
-            unit = ""
+            display_value = f"{total:,.0f}"
         
-        result = f"{', '.join(filters_applied)} 조건의 {metric}: {total:,.0f}{unit}"
+        result = f"{', '.join(filters_applied)} 조건의 {metric}: {display_value}"
         result += f"\n(총 {filtered_count:,}개 레코드 중에서 집계, 전체 데이터의 {filtered_count/original_count:.1%})"
         
         return result
     else:
         return f"지표 '{metric}'를 찾을 수 없습니다. 사용 가능한 지표를 확인해주세요."
 
-@tool
-def advanced_multi_column_query(
-    division: str = None,
-    country: str = None, 
-    year: str = None,
-    period: str = None,
-    supplier: str = None,
-    funds_center: str = None,
-    metric: str = "매출수량(M/T)"
-) -> str:
-    """복합 조건으로 데이터를 필터링하고 지정된 지표를 계산합니다."""
-    return _advanced_multi_column_query(
-        division=division,
-        country=country,
-        year=year,
-        period=period,
-        supplier=supplier,
-        funds_center=funds_center,
-        metric=metric
-    )
+# DEPRECATED: advanced_multi_column_query 제거됨
+# smart_query_processor 사용 권장
 
 @tool
 def comparative_analysis_tool(
@@ -585,7 +572,7 @@ def _extract_complex_entities(question: str) -> dict:
             entities['division'] = div
             break
     
-    # 기간 패턴
+    # 기간 패턴 - 월 범위 조건 추가
     if '상반기' in question:
         entities['period'] = '상반기'
     elif '하반기' in question:
@@ -593,6 +580,19 @@ def _extract_complex_entities(question: str) -> dict:
     elif re.search(r'(\d+)분기', question):
         quarter_match = re.search(r'(\d+)분기', question)
         entities['period'] = f"{quarter_match.group(1)}분기"
+    # 월 범위 패턴: "7월부터 12월", "1월-6월" 등
+    elif re.search(r'(\d+)월부터\s*(\d+)월', question):
+        month_range_match = re.search(r'(\d+)월부터\s*(\d+)월', question)
+        start_month = int(month_range_match.group(1))
+        end_month = int(month_range_match.group(2))
+        entities['period'] = f"{start_month}월부터{end_month}월"
+        entities['month_range'] = (start_month, end_month)
+    elif re.search(r'(\d+)월-(\d+)월', question):
+        month_range_match = re.search(r'(\d+)월-(\d+)월', question)
+        start_month = int(month_range_match.group(1))
+        end_month = int(month_range_match.group(2))
+        entities['period'] = f"{start_month}월-{end_month}월"
+        entities['month_range'] = (start_month, end_month)
     
     # 연도 패턴
     year_match = re.search(r'(20\d{2})', question)
@@ -621,61 +621,10 @@ def _extract_complex_entities(question: str) -> dict:
     
     return entities
 
-@tool  
-def extract_complex_entities(question: str) -> dict:
-    """복합 질문에서 엔티티를 정교하게 추출합니다."""
-    return _extract_complex_entities(question)
+# extract_complex_entities removed - now integrated into smart_query_processor
 
-@tool
-def detect_relevant_columns(question: str) -> str:
-    """질문에서 관련 컬럼들을 자동 감지하고 추천합니다."""
-    df = get_dataframe()
-    
-    # 향상된 엔티티 추출 사용
-    entities = _extract_complex_entities(question)
-    
-    # 기존 컬럼-키워드 매핑 (호환성 유지)
-    column_keywords = {
-        "Division": ["사업실", "사업부", "부문", "division", "스테인리스", "전기강판", "열연조강", "냉연", "후판선재", "모빌리티", "에너지인프라강재", "자동차소재"],
-        "Country": ["국가", "나라", "country", "한국", "중국", "일본", "미국", "국내", "해외"],
-        "Period/Year": ["년", "년도", "분기", "상반기", "하반기", "2023", "2024", "2022"],
-        "Supplier": ["공급사", "공급업체", "supplier", "posco", "포스코"],
-        "FundsCenter": ["그룹", "센터", "funds", "펀드"],
-        "매출수량(M/T)": ["매출수량", "판매량", "수량", "톤", "volume"],
-        "1.매출액": ["매출액", "매출", "sales", "revenue"],
-        "5.영업이익": ["영업이익", "이익", "profit", "operating"],
-        "8.세전이익": ["세전이익", "세전", "pre-tax"]
-    }
-    
-    detected_columns = []
-    detected_metrics = []
-    question_lower = question.lower()
-    
-    for column, keywords in column_keywords.items():
-        matches = [kw for kw in keywords if kw in question_lower]
-        if matches:
-            if column in ["매출수량(M/T)", "국가", "1.매출액", "5.영업이익", "8.세전이익"]:
-                detected_metrics.append(column)
-            else:
-                detected_columns.append(column)
-    
-    result = f"📋 질문 분석 결과:\n"
-    
-    if detected_columns:
-        result += f"• 관련 필터 컬럼: {', '.join(detected_columns)}\n"
-    
-    if detected_metrics:
-        result += f"• 분석 대상 지표: {', '.join(detected_metrics)}\n"
-    else:
-        result += f"• 분석 대상 지표: 매출수량(M/T) (기본값)\n"
-    
-    # 추천 도구
-    if len(detected_columns) >= 2:
-        result += f"• 추천 도구: advanced_multi_column_query 또는 comparative_analysis_tool\n"
-    elif len(detected_columns) == 1:
-        result += f"• 추천 도구: 기존 단일 컬럼 도구들\n"
-    
-    return result
+# detect_relevant_columns simplified - most functionality now in smart_query_processor
+# Keeping only basic column detection for backward compatibility
 
 # === Phase 1.2: Data Exploration Tools ===
 
